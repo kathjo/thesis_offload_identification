@@ -3,9 +3,8 @@
 //    FindOffloadLoops.cpp
 //
 // DESCRIPTION:
-//    Visits all functions in a module, computes live-in and live-out data 
-//    for each basic block and bandwidth utilization through loads/stores 
-//    in each basic block.
+//    Visits all functions in a module, computes regularity of data-access in all loops 
+//    to create a regularity score and based on this heuristic determines code regions for offloading.
 //
 // USAGE (new passmanager only):
 //    
