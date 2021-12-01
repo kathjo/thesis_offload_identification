@@ -1,4 +1,4 @@
-# Offload Loop Identification
+# Offload Kernel Identification
 Code for my thesis on automated kernel identification for offloading to processing-in-memory cores using LLVM.
 
 This is a public reupload from the private project repository.
