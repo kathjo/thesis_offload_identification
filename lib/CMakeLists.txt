@@ -2,7 +2,8 @@ add_library(
   OffloadIdentification
   SHARED
   FindOffloadLoops.cpp
-  #AccessNode.cpp
+  AccessNode.cpp
+  InductionLoopVisitor.cpp
 )
 
 # Configure include directories for 'plugin'
