@@ -58,7 +58,7 @@ struct LoopNode {
   float OffloadRatio = 0;
 };
 
-using ShPtrLN = std::shared_ptr<LoopNode>;
+using SPtrLN = std::shared_ptr<LoopNode>;
 
 void loopNodeDFSPrinter(std::shared_ptr<LoopNode> ThisNode, unsigned Level) {
   errs() << "\n";
@@ -220,7 +220,7 @@ private:
   llvm::LoopInfo *LI;
   llvm::ScalarEvolution *SE;
   llvm::DominatorTree &DT;
-  std::vector<ShPtrLN> &LoopTreeVector;
+  std::vector<SPtrLN> &LoopTreeVector;
 
   Loop *TLL = nullptr;
   llvm::SmallVector<llvm::Loop *, 4> Loops;
@@ -273,7 +273,7 @@ private:
   }
 
   void populateLoopTree() {
-    std::vector<ShPtrLN> NewLoopNodes;
+    std::vector<SPtrLN> NewLoopNodes;
     // create list of loop nodes in preorder, same as loop-info tree structure
     // loop nodes form a link tree
     for (auto L : Loops) {
@@ -284,14 +284,14 @@ private:
       errs() << BB->getName();
       errs() << "\n";
       const std::string Name = (std::string)BB->getName();
-      ShPtrLN NewNode = ShPtrLN(new LoopNode{
+      SPtrLN NewNode = SPtrLN(new LoopNode{
           Name,
           LoopTreeVector.front(), // ParentLoop, default is Function RootNode;
           L                       // LoopPtr
       });
       for (auto Iter = NewLoopNodes.begin(); Iter != NewLoopNodes.end();
            Iter++) {
-        ShPtrLN PreviousNode = *Iter;
+        SPtrLN PreviousNode = *Iter;
         Loop *Temp = PreviousNode->LoopPtr;
         if (Temp == L->getParentLoop()) {
           NewNode->ParentLoop = PreviousNode;
@@ -378,7 +378,7 @@ private:
 public:
   // constructor
   LoopTreeGen(llvm::LoopInfo *LI, llvm::ScalarEvolution *SE,
-              llvm::DominatorTree &DT, std::vector<ShPtrLN> &LoopTreeVector)
+              llvm::DominatorTree &DT, std::vector<SPtrLN> &LoopTreeVector)
       : LI(LI), SE(SE), DT(DT), LoopTreeVector(LoopTreeVector) {}
 
   void addLoops(Loop *nextTLL) {
@@ -409,11 +409,11 @@ bool runOnFunction(Function &F, FunctionAnalysisManager &AM) {
   llvm::DominatorTree DT(F);
 
   // vector stores all LoopNodes in the LoopTree
-  std::vector<ShPtrLN> LoopTreeVector;
+  std::vector<SPtrLN> LoopTreeVector;
 
   // this root node does not actually represent a loop,
   // it represents the function containing the TLLs
-  ShPtrLN RootNode = ShPtrLN(new LoopNode{
+  SPtrLN RootNode = SPtrLN(new LoopNode{
       "Root",
       nullptr, // ParentLoop
       nullptr  // LoopPtr
@@ -440,11 +440,11 @@ bool runOnFunction(Function &F, FunctionAnalysisManager &AM) {
   // point to loops that are on the same nesting level (meaning they are both
   // nested in the same outer loop, or are both TLLs) one nesting level can have
   // multiple ranges
-  std::list<ShPtrLN> WorkList;
+  std::list<SPtrLN> WorkList;
   std::list<Loop *> OffloadRanges;
   WorkList.push_back(RootNode);
   while (!WorkList.empty()) {
-    ShPtrLN TraversePtr = WorkList.front();
+    SPtrLN TraversePtr = WorkList.front();
     WorkList.pop_front();
     FindRanges RangeFinder =
         FindRanges(TraversePtr->InnerLoops, OffloadThreshold);
