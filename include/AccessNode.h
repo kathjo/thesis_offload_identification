@@ -1,13 +1,6 @@
 #ifndef LLVM_PASS_ACCESS_NODE
 #define LLVM_PASS_ACCESS_NODE
 
-// #include "llvm/Analysis/LoopInfo.h"
-// #include "llvm/Analysis/ScalarEvolutionExpressions.h"
-
-// #include "llvm/IR/Dominators.h"
-
-// #include "InductionLoopVisitor.h"
-
 using namespace llvm;
 
 namespace offload {
