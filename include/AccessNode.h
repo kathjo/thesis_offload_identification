@@ -11,12 +11,12 @@ const float LoopFactor = 100;
 class AccessNode {
 private:
   Loop *LoopPtr;
-  Loop *FirstNonInductionLoop;
+  llvm::LoadInst *LoadPtr;
   ScalarEvolution *SE;
   DominatorTree *DT;
+  Loop *FirstNonInductionLoop;
   bool Regular;
   bool TemporalReuse;
-  llvm::LoadInst *LoadPtr;
   float TripcountFactor;
   // indirection here beeing defined as use beeing defined by another load
   SmallPtrSet<llvm::Instruction *, 16> Visited;

@@ -33,7 +33,7 @@
 #include <string>
 
 #include "AccessNode.h"
-#include "InductionLoopVisitor.h"
+#include "FindRanges.h"
 #include "LoopNode.h"
 
 using namespace llvm;
@@ -48,7 +48,7 @@ const float OffloadThreshold = 0.7;
 
 using SPtrLN = std::shared_ptr<LoopNode>;
 
-void loopNodeDFSPrinter(std::shared_ptr<LoopNode> ThisNode, unsigned Level) {
+void loopNodeDFSPrinter(SPtrLN ThisNode, unsigned Level) {
   errs() << "\n";
   for (unsigned i = 0; i < Level; ++i)
     errs() << "\t";
@@ -60,148 +60,6 @@ void loopNodeDFSPrinter(std::shared_ptr<LoopNode> ThisNode, unsigned Level) {
 
   errs() << "\n";
 }
-
-class FindRanges {
-private:
-  struct Tuple {
-    int begin;
-    int end;
-    int delta;
-    float avg;
-  };
-  static bool compareByDelta(const Tuple &A, const Tuple &B) {
-    return A.delta < B.delta;
-  }
-  static bool compareByBegin(const Tuple &A, const Tuple &B) {
-    return A.begin < B.begin;
-  }
-
-  float Threshold;
-  std::vector<Tuple> TupleList;
-
-  // sums up the OffloadRatios of all LoopNodes pointed to in the interval
-  // [Iter1, Iter2] Iter1 and Iter2 can point to the same element
-  float
-  sumUp(std::list<std::shared_ptr<offload::LoopNode>>::const_iterator Iter1,
-        std::list<std::shared_ptr<offload::LoopNode>>::const_iterator Iter2) {
-    float Sum = (*Iter1)->OffloadRatio;
-    while (Iter1 != Iter2) {
-      Iter1++;
-      Sum += (*Iter1)->OffloadRatio;
-    }
-    return Sum;
-  }
-
-  void reduceTuples(std::vector<Tuple> &TupleList) {
-    auto Iter1 = TupleList.begin();
-    while (Iter1 != TupleList.end()) {
-      auto T1 = *Iter1;
-      bool deleteTuple = false;
-      auto Iter2 = Iter1;
-      ++Iter2;
-      for (; Iter2 != TupleList.end(); ++Iter2) {
-        auto T = *Iter2;
-        if ((T1.begin >= T.begin) && (T1.end <= T.end)) {
-          deleteTuple = true;
-          break;
-        }
-      }
-      if (deleteTuple) {
-        Iter1 = TupleList.erase(Iter1);
-      } else {
-        ++Iter1;
-      }
-    }
-  }
-
-  const std::list<std::shared_ptr<LoopNode>> &InnerLoopNodes;
-
-public:
-  FindRanges(const std::list<std::shared_ptr<LoopNode>> &InnerLoopNodes,
-             float Threshold = 0.1)
-      : InnerLoopNodes(InnerLoopNodes), Threshold(Threshold) {
-    for (auto Iter1 = InnerLoopNodes.begin(); Iter1 != InnerLoopNodes.end();
-         ++Iter1) {
-      for (auto Iter2 = Iter1; Iter2 != InnerLoopNodes.end(); ++Iter2) {
-        // Only consider ranges that have non-offloading blocks in the middle,
-        // not at the beginning or end.
-        auto LN1 = **Iter1;
-        auto LN2 = **Iter2;
-        if ((LN1.OffloadRatio > Threshold) && (LN2.OffloadRatio > Threshold)) {
-          float Sum = sumUp(Iter1, Iter2);
-          float Distance = (std::distance(Iter1, Iter2) + 1);
-          float Average = Sum / Distance;
-          if (Average > Threshold) {
-            int begin = std::distance(InnerLoopNodes.begin(), Iter1);
-            int end = std::distance(InnerLoopNodes.begin(), Iter2);
-            assert((begin <= end) && "inverted range!");
-            int delta = end - begin;
-            Tuple T{begin, end, delta, Average};
-            TupleList.push_back(T);
-          }
-        }
-      }
-    }
-    std::sort(TupleList.begin(), TupleList.end(), compareByDelta);
-    reduceTuples(TupleList);
-    std::sort(TupleList.begin(), TupleList.end(), compareByBegin);
-    // true smaller than because comparing index to size
-    if (!TupleList.empty()) {
-      assert(((TupleList.back()).end < InnerLoopNodes.size()) &&
-             "tuple list doesn't match inner loop nodes!");
-      printRanges();
-    } else {
-      errs() << "Found no Ranges in this LoopNode \n";
-    }
-  }
-  void printRanges() {
-    errs() << "Found these optimal ranges: \n";
-    auto Iter = InnerLoopNodes.begin();
-    for (auto T : TupleList) {
-      while (std::distance(InnerLoopNodes.begin(), Iter) < T.begin) {
-        ++Iter;
-      }
-      errs() << T.begin << ": ";
-      (**Iter).LoopPtr->print(errs());
-      errs() << " \n";
-      while (std::distance(InnerLoopNodes.begin(), Iter) < T.end) {
-        ++Iter;
-      }
-      errs() << T.end << ": ";
-      (**Iter).LoopPtr->print(errs());
-      errs() << " \n";
-      errs() << "Average: " << T.avg << " \n";
-      errs() << " \n";
-    }
-  }
-  void getRangesAsList(std::list<std::shared_ptr<LoopNode>> *Worklist,
-                       std::list<Loop *> *Ranges) {
-    auto Iter = InnerLoopNodes.begin();
-    if (!TupleList.empty()) {
-      for (auto T : TupleList) {
-        while (std::distance(InnerLoopNodes.begin(), Iter) < T.begin) {
-          if (!(*Iter)->InnerLoops.empty()) {
-            Worklist->push_back((*Iter));
-          }
-          ++Iter;
-        }
-        Ranges->push_back((*Iter)->LoopPtr);
-        while (std::distance(InnerLoopNodes.begin(), Iter) < T.end) {
-          ++Iter;
-        }
-        Ranges->push_back((*Iter)->LoopPtr);
-      }
-      // Iterator must point to actual end, not last element
-      ++Iter;
-    }
-    while (Iter != InnerLoopNodes.end()) {
-      if (!(*Iter)->InnerLoops.empty()) {
-        Worklist->push_back((*Iter));
-      }
-      ++Iter;
-    }
-  }
-};
 
 class LoopTreeGen {
 private:

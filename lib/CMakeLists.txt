@@ -4,6 +4,7 @@ add_library(
   FindOffloadLoops.cpp
   AccessNode.cpp
   InductionLoopVisitor.cpp
+  FindRanges.cpp
 )
 
 # Configure include directories for 'plugin'
