@@ -34,6 +34,7 @@
 
 #include "AccessNode.h"
 #include "InductionLoopVisitor.h"
+#include "LoopNode.h"
 
 using namespace llvm;
 
@@ -44,19 +45,6 @@ namespace offload {
 
 // magic constant determining threshold for offloading
 const float OffloadThreshold = 0.7;
-
-struct LoopNode {
-  std::string Name;
-  std::shared_ptr<LoopNode> ParentLoop = nullptr;
-  llvm::Loop *LoopPtr = nullptr;
-  std::list<std::shared_ptr<LoopNode>>
-      InnerLoops; // this can be separate from accesses
-  std::vector<std::shared_ptr<AccessNode>>
-      AttachedAccesses; // actually just LoadInst for now
-  float Regular = 0;
-  float Irregular = 0;
-  float OffloadRatio = 0;
-};
 
 using SPtrLN = std::shared_ptr<LoopNode>;
 
