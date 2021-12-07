@@ -5,6 +5,7 @@ add_library(
   AccessNode.cpp
   InductionLoopVisitor.cpp
   FindRanges.cpp
+  LoopTreeGen.cpp
 )
 
 # Configure include directories for 'plugin'
